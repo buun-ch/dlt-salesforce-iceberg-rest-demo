@@ -58,6 +58,7 @@ Setup the environment:
 mise trust
 uv venv
 uv sync
+source .venv/bin/activate
 ```
 
 ## Configuration
@@ -166,14 +167,13 @@ iceberg_schema = create_iceberg_schema_from_table_schema(table_schema)
 
 ## Limitations & Considerations
 
-### PyIceberg Constraints
+### PyIceberg Considerations
 
-This implementation is subject to PyIceberg's limitations:
+This implementation is subject to PyIceberg's characteristics:
 
-- **Concurrent Writes**: PyIceberg doesn't support concurrent writes to the same table
-- **Transaction Isolation**: Limited ACID transaction support compared to Spark
-- **Performance**: Single-threaded writes may be slower for large datasets
-- **Schema Evolution**: Limited schema evolution capabilities
+- **Performance**: Single-threaded processing may be slower than Spark for very large datasets
+- **Concurrent Writes**: PyIceberg lacks automatic retry mechanisms for transaction conflicts, making concurrent writes more likely to fail compared to Spark
+- **Ecosystem**: Fewer integrations compared to Spark, but rapidly improving
 
 ### Recommended Usage Patterns
 
@@ -241,27 +241,6 @@ Enable DuckDB mode for local debugging:
 ```bash
 export DUMP_TO_DUCKDB=true
 ```
-
-## Project Initialization
-
-This project was initialized by:
-
-```bash
-uv init
-source .venv/bin/activate
-uv add dlt
-dlt init salesforce dummy
-```
-
-## Contributing
-
-This is a demonstration project. For production use:
-
-1. Add comprehensive error handling
-2. Implement retry logic for transient failures
-3. Add schema evolution support
-4. Consider using Spark for large-scale processing
-5. Add monitoring and alerting
 
 ## References
 
