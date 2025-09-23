@@ -1,0 +1,26 @@
+# Dagster deployment recipes for dlt-salesforce pipeline
+
+set dotenv-filename := ".env.local"
+
+[private]
+default:
+    @just --list --unsorted --list-submodules
+
+# Prepare Dagster repository for Kubernetes deployment
+prepare:
+    @echo "📦 Preparing dagster repository for Kubernetes deployment..."
+    # cp ../salesforce_pipeline.py dlt_salesforce/
+    # cp -r ../iceberg ../salesforce dlt_salesforce
+    mkdir -p ./dependencies
+    touch ./dependencies/__init__.py
+    cp ../salesforce_pipeline.py ./dependencies
+    cp -r ../iceberg ../salesforce ./dependencies
+    @echo "✅ Ready for deployment"
+
+# Clean up prepared Dagster files
+clean:
+    @echo "🧹 Cleaning up prepared files..."
+    rm -f dlt_salesforce/salesforce_pipeline.py
+    rm -rf dlt_salesforce/iceberg
+    rm -rf dlt_salesforce/salesforce
+    @echo "   → Removed dagster/dlt-salesforce/"

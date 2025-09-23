@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Pipeline to load Salesforce data."""
 
-import logging
 import os
 import shutil
-import sys
 from functools import cache
 from typing import Sequence
 
@@ -61,6 +59,7 @@ def iceberg_rest_catalog(items: TDataItems, table: TTableSchema) -> None:
         if write_disposition == "replace":
             print(f"Replace mode: deleting all data from {full_table_name}")
             from pyiceberg.expressions import AlwaysTrue
+
             i_table.delete(delete_filter=AlwaysTrue())
 
     except NoSuchTableError:
@@ -105,15 +104,6 @@ def apply_write_disposition(
 
 def load() -> LoadInfo:
     """Execute a pipeline from Salesforce."""
-    # In Airflow, warnings are sent to stderr which gets logged as ERROR
-    # Redirect dlt warnings to stdout instead
-    if "airflow" in sys.modules:
-        dlt_logger = logging.getLogger("dlt")
-        # Create a handler that outputs to stdout instead of stderr
-        stdout_handler = logging.StreamHandler(sys.stdout)
-        stdout_handler.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
-        dlt_logger.handlers = [stdout_handler]
-
     pipeline_name = "salesforce_duckdb" if DUMP_TO_DUCKDB else "salesforce_iceberg"
 
     # Clear pipeline state for force_replace mode

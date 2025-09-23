@@ -7,19 +7,17 @@ default:
     @just --list --unsorted --list-submodules
 
 # Prepare Airflow dags directory for Kubernetes deployment
-prepare-airflow:
+prepare:
     @echo "📦 Preparing dags directory for Kubernetes deployment..."
     mkdir -p dags/dlt_salesforce
     cp ../salesforce_pipeline.py dags/dlt_salesforce/
     cp -r ../iceberg ../salesforce dags/dlt_salesforce
     touch dags/dlt_salesforce/__init__.py
-    @echo "   → salesforce_pipeline.py"
-    @echo "   → iceberg/schema.py"
-    @echo "✅ Ready for Kubernetes deployment"
+    @echo "✅ Ready for deployment"
     @echo "   Directory: ./dags/"
 
 # Clean up prepared Airlfow files
-clean-airflow:
+clean:
     @echo "🧹 Cleaning up prepared files..."
     rm -rf dags/dlt_salesforce/
     @echo "   → Removed dags/dlt-salesforce/"
