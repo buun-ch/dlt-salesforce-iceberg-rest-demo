@@ -52,9 +52,17 @@ def iceberg_rest_catalog(items: TDataItems, table: TTableSchema) -> None:
     table_name = table["name"]
     full_table_name = f"{NAMESPACE}.{table_name}"
     catalog = get_catalog()
+    write_disposition = table.get("write_disposition", "append")
 
     try:
         i_table = catalog.load_table(full_table_name)
+
+        # If replace mode, delete all existing data first
+        if write_disposition == "replace":
+            print(f"Replace mode: deleting all data from {full_table_name}")
+            from pyiceberg.expressions import AlwaysTrue
+            i_table.delete(delete_filter=AlwaysTrue())
+
     except NoSuchTableError:
         print(f"Table {full_table_name} not found, creating it...")
         iceberg_schema = create_iceberg_schema_from_table_schema(table)
@@ -68,7 +76,7 @@ def iceberg_rest_catalog(items: TDataItems, table: TTableSchema) -> None:
         )
         print(f"Created table {full_table_name} with schema: {iceberg_schema}")
 
-    print(f"Converting {len(items)} items to PyArrow table")
+    print(f"Converting {len(items)} items to PyArrow table ({write_disposition} mode)")
     pa_table = pa.Table.from_pylist(items)
     i_table.append(pa_table)
 

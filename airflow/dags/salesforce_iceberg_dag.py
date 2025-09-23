@@ -103,7 +103,6 @@ def salesforce_iceberg_pipeline():
         try:
             config = pipeline_result["config"]
 
-            # Connect to catalog
             catalog = RestCatalog(
                 name="rest_catalog",
                 uri=config["ICEBERG_CATALOG_URL"],
