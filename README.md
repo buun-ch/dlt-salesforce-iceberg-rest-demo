@@ -125,6 +125,14 @@ export DUMP_TO_DUCKDB=true
 op run --env-file=./.env.local -- python salesforce_pipeline.py
 ```
 
+## Salesforce Sample Data
+
+To populate your Salesforce org with realistic test data for this demo, see [data/README.md](data/README.md). This includes Snowfakery recipes for generating:
+
+- Small-scale (50 accounts) for basic testing
+- Medium-scale (200 accounts) - Recommended for demos
+- Large-scale (1,000 accounts) for performance testing
+
 ## Project Structure
 
 ```

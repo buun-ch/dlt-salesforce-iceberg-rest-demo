@@ -1,0 +1,220 @@
+## Medium-Scale Salesforce Data Generation Recipe (Permission Error Fixed)
+## Account: 200 companies
+## Contact: 800 people (average 4 per company)
+## Opportunity: 600 deals (average 3 per company)
+## OpportunityContactRole: 1,200 deal contacts
+
+- snowfakery_version: 3
+
+# ==================== Account (200 companies) ====================
+- object: Account
+  count: 200
+  fields:
+    Name:
+      fake: company
+    Type:
+      random_choice:
+        Customer - Direct: 40%
+        Prospect: 25%
+        Customer - Channel: 15%
+        Channel Partner / Reseller: 10%
+        Technology Partner: 5%
+        Installation Partner: 3%
+        Other: 2%
+    Industry:
+      random_choice:
+        Technology: 15%
+        Healthcare: 12%
+        Finance: 12%
+        Manufacturing: 10%
+        Retail: 8%
+        Education: 7%
+        Banking: 6%
+        Insurance: 5%
+        Media: 5%
+        Telecommunications: 5%
+        Government: 3%
+        Energy: 3%
+        Transportation: 3%
+        Construction: 2%
+        Agriculture: 2%
+        Other: 2%
+    AnnualRevenue:
+      random_number:
+        min: 1000000
+        max: 500000000
+    NumberOfEmployees:
+      random_number:
+        min: 1
+        max: 2000
+    Phone:
+      fake: phone_number
+    Website:
+      fake: url
+    Description:
+      fake: catch_phrase
+    Rating:
+      random_choice:
+        Hot: 10%
+        Warm: 30%
+        Cold: 60%
+    AccountSource:
+      random_choice:
+        Web: 35%
+        Partner Referral: 25%
+        Phone Inquiry: 15%
+        Purchased List: 8%
+        Social Media: 5%
+        Other: 12%
+
+# ==================== Contact (800 people) ====================
+- object: Contact
+  count: 800
+  fields:
+    FirstName:
+      fake: first_name
+    LastName:
+      fake: last_name
+    AccountId:
+      random_reference: Account
+    Title:
+      random_choice:
+        Sales Manager: 15%
+        Marketing Manager: 12%
+        Project Manager: 10%
+        Developer: 8%
+        Business Analyst: 8%
+        CEO: 5%
+        CFO: 5%
+        CTO: 5%
+        VP Sales: 5%
+        VP Marketing: 5%
+        Director: 7%
+        Engineer: 5%
+        Consultant: 5%
+        Administrator: 3%
+        Other: 2%
+    Email:
+      fake: email
+    Phone:
+      fake: phone_number
+    MobilePhone:
+      fake: phone_number
+    Department:
+      random_choice:
+        Sales: 25%
+        Marketing: 20%
+        Engineering: 15%
+        Operations: 10%
+        Finance: 10%
+        IT: 8%
+        HR: 5%
+        Customer Service: 4%
+        Legal: 2%
+        Other: 1%
+    LeadSource:
+      random_choice:
+        Web: 30%
+        Partner Referral: 20%
+        Phone Inquiry: 15%
+        Purchased List: 10%
+        Social Media: 8%
+        Other: 17%
+    Birthdate:
+      date_between:
+        start_date: -65y
+        end_date: -22y
+    Description:
+      fake.text:
+        max_nb_chars: 200
+
+# ==================== Opportunity (600 deals) ====================
+- object: Opportunity
+  count: 600
+  fields:
+    Name: ${{fake.company}} - ${{fake.bs}}
+    AccountId:
+      random_reference: Account
+    StageName:
+      random_choice:
+        Closed Won: 20%
+        Closed Lost: 15%
+        Negotiation/Review: 10%
+        Proposal/Price Quote: 10%
+        Value Proposition: 10%
+        Needs Analysis: 10%
+        Qualification: 10%
+        Prospecting: 10%
+        Id. Decision Makers: 3%
+        Perception Analysis: 2%
+    Amount:
+      random_number:
+        min: 50000
+        max: 5000000
+    Probability:
+      random_choice:
+        100: 20%  # Closed Won
+        0: 15%    # Closed Lost
+        90: 5%
+        75: 10%
+        50: 15%
+        25: 20%
+        10: 15%
+    CloseDate:
+      date_between:
+        start_date: -180d
+        end_date: +365d
+    Type:
+      random_choice:
+        New Customer: 40%
+        Existing Customer - Upgrade: 25%
+        Existing Customer - Replacement: 15%
+        Existing Customer - Downgrade: 5%
+        Add-On Business: 15%
+    LeadSource:
+      random_choice:
+        Web: 25%
+        Partner Referral: 20%
+        Phone Inquiry: 15%
+        Email Campaign: 10%
+        Purchased List: 8%
+        Social Media: 7%
+        Employee Referral: 3%
+        Other: 12%
+    NextStep:
+      random_choice:
+        "Send proposal": 20%
+        "Schedule demo": 15%
+        "Follow up call": 15%
+        "Contract review": 10%
+        "Technical evaluation": 10%
+        "Budget approval": 10%
+        "Executive meeting": 5%
+        "Proof of concept": 5%
+        "Reference check": 5%
+        "Completed": 5%
+    Description:
+      fake.text:
+        max_nb_chars: 500
+
+# ==================== OpportunityContactRole (1,200 records) ====================
+- object: OpportunityContactRole
+  count: 1200
+  fields:
+    OpportunityId:
+      random_reference: Opportunity
+    ContactId:
+      random_reference: Contact
+    Role:
+      random_choice:
+        Decision Maker: 15%
+        Evaluator: 20%
+        Influencer: 25%
+        Executive Sponsor: 10%
+        Technical Buyer: 15%
+        Economic Buyer: 10%
+        Other: 5%
+    IsPrimary:
+      random_choice:
+        true: 20%
+        false: 80%

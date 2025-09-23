@@ -1,0 +1,101 @@
+## Simple Salesforce Data Generation Recipe
+- snowfakery_version: 3
+
+# ==================== Account (50 companies) ====================
+- object: Account
+  count: 50
+  fields:
+    Name:
+      fake: company
+    Type:
+      random_choice:
+        - Customer - Direct
+        - Prospect
+        - Customer - Channel
+        - Partner
+    Industry:
+      random_choice:
+        - Technology
+        - Healthcare
+        - Finance
+        - Manufacturing
+        - Education
+    NumberOfEmployees:
+      random_number:
+        min: 10
+        max: 1000
+    Phone:
+      fake: phone_number
+    Website:
+      fake: url
+    Description:
+      fake: catch_phrase
+
+# ==================== Contact (150 people) ====================
+- object: Contact
+  count: 150
+  fields:
+    FirstName:
+      fake: first_name
+    LastName:
+      fake: last_name
+    AccountId:
+      random_reference: Account
+    Title:
+      random_choice:
+        - Sales Manager
+        - Marketing Manager
+        - CEO
+        - CFO
+        - Developer
+        - Project Manager
+    Email:
+      fake: email
+    Phone:
+      fake: phone_number
+    Department:
+      random_choice:
+        - Sales
+        - Marketing
+        - Engineering
+        - Finance
+        - Operations
+
+# ==================== Opportunity (100 deals) ====================
+- object: Opportunity
+  count: 100
+  fields:
+    Name: ${{fake.company}} Deal
+    AccountId:
+      random_reference: Account
+    StageName:
+      random_choice:
+        - Prospecting
+        - Qualification
+        - Needs Analysis
+        - Value Proposition
+        - Proposal/Price Quote
+        - Negotiation/Review
+        - Closed Won
+        - Closed Lost
+    Amount:
+      random_number:
+        min: 10000
+        max: 1000000
+    CloseDate:
+      date_between:
+        start_date: today
+        end_date: +180d
+    Probability:
+      random_choice:
+        - 10
+        - 25
+        - 50
+        - 75
+        - 90
+        - 100
+    Type:
+      random_choice:
+        - New Customer
+        - Existing Customer - Upgrade
+        - Existing Customer - Replacement
