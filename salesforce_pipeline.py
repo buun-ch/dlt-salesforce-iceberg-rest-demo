@@ -10,6 +10,7 @@ from typing import Sequence
 
 import dlt
 import pyarrow as pa
+from dlt.common.pipeline import LoadInfo
 from dlt.common.schema import TTableSchema
 from dlt.common.typing import TDataItems
 from pyiceberg.catalog.rest import RestCatalog
@@ -94,7 +95,7 @@ def apply_write_disposition(
                 print(f"  - {resource_name}: {disposition}")
 
 
-def load() -> None:
+def load() -> LoadInfo:
     """Execute a pipeline from Salesforce."""
     # In Airflow, warnings are sent to stderr which gets logged as ERROR
     # Redirect dlt warnings to stdout instead
@@ -125,9 +126,8 @@ def load() -> None:
     source = salesforce_source().with_resources(*resources)
     apply_write_disposition(source, resources, WRITE_DISPOSITION)
 
-    load_info = pipeline.run(source)
-    print(load_info)
+    return pipeline.run(source)
 
 
 if __name__ == "__main__":
-    load()
+    print(load())

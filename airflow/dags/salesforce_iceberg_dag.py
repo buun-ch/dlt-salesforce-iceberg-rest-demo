@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """Airflow DAG for Salesforce to Iceberg pipeline using TaskFlow API."""
 
+import os
+import sys
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict
+from pathlib import Path
+from typing import Any, Dict
 
 from airflow.decorators import dag, task
 from airflow.models import Variable
+from pyiceberg.catalog.rest import RestCatalog
 
-if TYPE_CHECKING:
-    from salesforce_pipeline import load  # type: ignore[import] # noqa: F401
+dlt_dir = Path(__file__).parent / "dlt_salesforce"
+sys.path.insert(0, str(dlt_dir))
 
-# Default arguments for the DAG
 default_args = {
     "owner": "data-team",
     "depends_on_past": False,
@@ -35,7 +38,6 @@ def salesforce_iceberg_pipeline():
     @task
     def validate_configuration() -> Dict[str, Any]:
         """Validate required configuration and environment variables."""
-        import os
 
         required_vars = [
             "SOURCES__SALESFORCE__CREDENTIALS__USER_NAME",
@@ -77,24 +79,14 @@ def salesforce_iceberg_pipeline():
     @task
     def run_salesforce_pipeline(config) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
         """Execute the Salesforce to Iceberg pipeline."""
-        import os
-        import sys
-        from pathlib import Path
 
-        # Add dlt-salesforce utils to Python path
-        utils_dir = Path(__file__).parent / "dlt-salesforce"
-        sys.path.insert(0, str(utils_dir))
-
-        # Set environment variables
         for key, value in config.items():
             os.environ[key] = str(value)
 
-        # Import and run the pipeline
         from salesforce_pipeline import load  # type: ignore[import]
 
         print(f"Starting Salesforce pipeline with config:\n{config}")
-
-        load()
+        print(load())
 
         return {
             "status": "success",
@@ -105,19 +97,10 @@ def salesforce_iceberg_pipeline():
     @task
     def verify_data_load(pipeline_result) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
         """Verify that data was loaded successfully into Iceberg tables."""
-        import sys
-        from pathlib import Path
 
         if pipeline_result["status"] != "success":
             raise ValueError(f"Pipeline failed: {pipeline_result['message']}")
-
-        # Add dlt-salesforce utils to Python path
-        utils_dir = Path(__file__).parent / "dlt-salesforce"
-        sys.path.insert(0, str(utils_dir))
-
         try:
-            from pyiceberg.catalog.rest import RestCatalog
-
             config = pipeline_result["config"]
 
             # Connect to catalog
@@ -195,12 +178,10 @@ def salesforce_iceberg_pipeline():
 
         print(message)
 
-    # Define task dependencies
     config = validate_configuration()
     pipeline_result = run_salesforce_pipeline(config)
     verification_result = verify_data_load(pipeline_result)
     send_notification(verification_result)
 
 
-# Instantiate the DAG
 salesforce_dag = salesforce_iceberg_pipeline()
