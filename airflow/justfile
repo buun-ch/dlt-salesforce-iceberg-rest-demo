@@ -1,0 +1,56 @@
+# Airflow deployment recipes for dlt-salesforce pipeline
+
+set dotenv-filename := ".env.local"
+
+[private]
+default:
+    @just --list --unsorted --list-submodules
+
+AIRFLOW_HOME := env('AIRFLOW_HOME', '~/airflow')
+
+# Prepare dags directory for Kubernetes deployment
+prepare:
+    @echo "📦 Preparing dags directory for Kubernetes deployment..."
+    mkdir -p dags/dlt-salesforce
+    cp ../salesforce_pipeline.py dags/dlt-salesforce/
+    cp -r ../iceberg ../salesforce dags/dlt-salesforce
+    touch dags/dlt-salesforce/__init__.py
+    touch dags/dlt-salesforce/iceberg/__init__.py
+    @echo "   → salesforce_pipeline.py"
+    @echo "   → iceberg/schema.py"
+    @echo "✅ Ready for Kubernetes deployment"
+    @echo "   Directory: ./dags/"
+
+# Copy to local Airflow (rarely used)
+copy:
+    @echo "📂 Copying to local Airflow..."
+    cp -r dags/* {{ AIRFLOW_HOME }}/dags/
+    @echo "   → Copied to {{ AIRFLOW_HOME }}/dags/"
+
+# Clean up prepared files
+clean:
+    @echo "🧹 Cleaning up prepared files..."
+    rm -rf dags/dlt-salesforce/
+    @echo "   → Removed dags/dlt-salesforce/"
+
+# Check preparation status
+status:
+    @echo "📊 Preparation status:"
+    @if [ -f "dags/salesforce_iceberg_dag.py" ]; then \
+        echo "✅ DAG ready"; \
+    else \
+        echo "❌ DAG missing"; \
+    fi
+    @if [ -d "dags/dlt-salesforce" ]; then \
+        echo "✅ Utils prepared"; \
+    else \
+        echo "❌ Utils not prepared"; \
+    fi
+    @if [ -f "dags/dlt-salesforce/salesforce_pipeline.py" ]; then \
+        echo "✅ Pipeline module ready"; \
+    else \
+        echo "❌ Pipeline module missing"; \
+    fi
+
+# Prepare and clean (refresh)
+refresh: clean prepare

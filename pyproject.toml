@@ -14,10 +14,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "apache-airflow>=3.0.6",
     "mypy>=1.18.2",
     "pandas>=2.3.2",
     "pyarrow-stubs>=20.0.0.20250825",
-    "pyright>=1.1.405",
     "ruff>=0.13.1",
 ]
 
@@ -26,3 +26,8 @@ builtins = ["_"]
 exclude = [".venv"]
 line-length = 88
 indent-width = 4
+
+[tool.uv.workspace]
+members = [
+    "airflow",
+]

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Pipeline to load Salesforce data."""
 
+import logging
 import os
+import shutil
+import sys
 from functools import cache
 from typing import Sequence
 
@@ -22,7 +25,7 @@ TOKEN = os.getenv("ICEBERG_TOKEN", "")
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 WRITE_DISPOSITION = os.getenv(
-    "WRITE_DISPOSITION", "default"
+    "WRITE_DISPOSITION", "force_replace"
 )  # default or force_replace
 SALESFORCE_RESOURCES = os.getenv(
     "SALESFORCE_RESOURCES", "account,contact,opportunity,opportunity_contact_role"
@@ -93,8 +96,24 @@ def apply_write_disposition(
 
 def load() -> None:
     """Execute a pipeline from Salesforce."""
+    # In Airflow, warnings are sent to stderr which gets logged as ERROR
+    # Redirect dlt warnings to stdout instead
+    if "airflow" in sys.modules:
+        dlt_logger = logging.getLogger("dlt")
+        # Create a handler that outputs to stdout instead of stderr
+        stdout_handler = logging.StreamHandler(sys.stdout)
+        stdout_handler.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
+        dlt_logger.handlers = [stdout_handler]
 
     pipeline_name = "salesforce_duckdb" if DUMP_TO_DUCKDB else "salesforce_iceberg"
+
+    # Clear pipeline state for force_replace mode
+    if WRITE_DISPOSITION == "force_replace":
+        pipeline_dir = os.path.expanduser(f"~/.dlt/pipelines/{pipeline_name}")
+        if os.path.exists(pipeline_dir):
+            print(f"Clearing pipeline state at {pipeline_dir} for force_replace mode")
+            shutil.rmtree(pipeline_dir)
+
     pipeline = dlt.pipeline(
         pipeline_name=pipeline_name,
         destination="duckdb" if DUMP_TO_DUCKDB else iceberg_rest_catalog,
