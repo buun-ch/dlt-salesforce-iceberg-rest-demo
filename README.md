@@ -68,9 +68,9 @@ Create a `.env.local` file with the following variables. All configuration optio
 
 ```bash
 # Salesforce Credentials (SecurityTokenAuth)
-SOURCES__SALESFORCE__CREDENTIALS__USER_NAME="op://Personal/Salesforce Developer Edition/username"
-SOURCES__SALESFORCE__CREDENTIALS__PASSWORD="op://Personal/Salesforce Developer Edition/password"
-SOURCES__SALESFORCE__CREDENTIALS__SECURITY_TOKEN="op://Personal/Salesforce token/credential"
+SOURCES__SALESFORCE__CREDENTIALS__USER_NAME="op://Personal/Salesforce/username"
+SOURCES__SALESFORCE__CREDENTIALS__PASSWORD="op://Personal/Salesforce/password"
+SOURCES__SALESFORCE__CREDENTIALS__SECURITY_TOKEN="op://Personal/SalesforceToken/credential"
 
 # Iceberg REST Catalog Configuration
 ICEBERG_CATALOG_URL="http://lakekeeper.lakekeeper:8181/catalog"
