@@ -64,7 +64,7 @@ uv sync
 
 ### Environment Variables
 
-Create a `.env.local` file with the following variables. If you are using 1Password, you can use the following format to reference your secrets:
+Create a `.env.local` file with the following variables. All configuration options are customizable via environment variables. If you are using 1Password, you can use the following format to reference your secrets:
 
 ```bash
 # Salesforce Credentials (SecurityTokenAuth)
@@ -80,6 +80,10 @@ ICEBERG_TOKEN="op://Personal/lakekeeper token/credential"
 
 # Optional: Performance Tuning
 BATCH_SIZE=1000
+
+# Optional: Data Loading Configuration
+WRITE_DISPOSITION=default  # default or force_replace
+SALESFORCE_RESOURCES=account,contact,opportunity,opportunity_contact_role
 
 # Optional: Fallback to DuckDB for testing
 DUMP_TO_DUCKDB=false
@@ -178,26 +182,48 @@ This implementation is subject to PyIceberg's limitations:
 - **Incremental Updates**: Use dlt's incremental loading for large tables
 - **Monitoring**: Monitor table metadata and file sizes
 
+## Configuration Options
+
+### Write Disposition
+
+Control how data is loaded into tables using the `WRITE_DISPOSITION` environment variable:
+
+- **`default`** - Uses the default write disposition defined in `salesforce/__init__.py` for each resource
+- **`force_replace`** - Forces all resources to use 'replace' disposition, completely replacing table contents
+
+```bash
+# Use default dispositions (recommended for incremental loading)
+WRITE_DISPOSITION=default
+
+# Force all tables to be completely replaced
+WRITE_DISPOSITION=force_replace
+```
+
+### Salesforce Resources
+
+Customize which Salesforce objects to load using the `SALESFORCE_RESOURCES` environment variable:
+
+```bash
+# Default configuration
+SALESFORCE_RESOURCES=account,contact,opportunity,opportunity_contact_role
+
+# Load only accounts and contacts
+SALESFORCE_RESOURCES=account,contact
+
+# Add leads and campaigns
+SALESFORCE_RESOURCES=account,contact,lead,campaign,opportunity
+```
+
 ## Supported Salesforce Objects
 
-Current configuration loads:
+Default configuration loads:
 
 - `account` - Customer accounts
 - `contact` - Contact records
 - `opportunity` - Sales opportunities
 - `opportunity_contact_role` - Opportunity-contact relationships
 
-Modify `salesforce_pipeline.py` to add more objects:
-
-```python
-salesforce_source().with_resources(
-    "account",
-    "contact",
-    "lead",           # Add leads
-    "campaign",       # Add campaigns
-    # ... more objects
-)
-```
+Other commonly available objects include: `lead`, `campaign`, `case`, `task`, `event`, `user`, etc.
 
 ## Troubleshooting
 

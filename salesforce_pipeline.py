@@ -3,6 +3,7 @@
 
 import os
 from functools import cache
+from typing import Sequence
 
 import dlt
 import pyarrow as pa
@@ -20,6 +21,12 @@ NAMESPACE = os.getenv("ICEBERG_NAMESPACE", "database")
 TOKEN = os.getenv("ICEBERG_TOKEN", "")
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
+WRITE_DISPOSITION = os.getenv(
+    "WRITE_DISPOSITION", "default"
+)  # default or force_replace
+SALESFORCE_RESOURCES = os.getenv(
+    "SALESFORCE_RESOURCES", "account,contact,opportunity,opportunity_contact_role"
+).split(",")
 
 DUMP_TO_DUCKDB = os.getenv("DUMP_TO_DUCKDB", "false") == "true"
 
@@ -62,6 +69,28 @@ def iceberg_rest_catalog(items: TDataItems, table: TTableSchema) -> None:
     i_table.append(pa_table)
 
 
+def apply_write_disposition(
+    source, resources: Sequence[str], write_disposition: str
+) -> None:
+    """Apply write disposition to resources based on configuration."""
+    if write_disposition == "force_replace":
+        print("Forcing all resources to use 'replace' disposition")
+        for resource_name in resources:
+            resource = getattr(source, resource_name, None)
+            if resource and hasattr(resource, "write_disposition"):
+                original = getattr(resource, "write_disposition", "unknown")
+                resource.write_disposition = "replace"
+                print(f"  - {resource_name}: {original} → replace")
+    else:
+        # Use default dispositions from salesforce/__init__.py
+        print("Using default write dispositions:")
+        for resource_name in resources:
+            resource = getattr(source, resource_name, None)
+            if resource and hasattr(resource, "write_disposition"):
+                disposition = getattr(resource, "write_disposition", "unknown")
+                print(f"  - {resource_name}: {disposition}")
+
+
 def load() -> None:
     """Execute a pipeline from Salesforce."""
 
@@ -71,14 +100,13 @@ def load() -> None:
         destination="duckdb" if DUMP_TO_DUCKDB else iceberg_rest_catalog,
         dataset_name="salesforce_data",
     )
-    load_info = pipeline.run(
-        salesforce_source().with_resources(
-            "account",
-            "contact",
-            "opportunity",
-            "opportunity_contact_role",
-        )
-    )
+
+    resources = [r.strip() for r in SALESFORCE_RESOURCES if r.strip()]
+    print(f"Loading Salesforce resources: {', '.join(resources)}")
+    source = salesforce_source().with_resources(*resources)
+    apply_write_disposition(source, resources, WRITE_DISPOSITION)
+
+    load_info = pipeline.run(source)
     print(load_info)
 
 
