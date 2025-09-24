@@ -4,7 +4,6 @@
 import os
 import shutil
 from functools import cache
-from typing import Sequence
 
 import dlt
 import pyarrow as pa
@@ -177,28 +176,6 @@ def iceberg_rest_catalog(items: TDataItems, table: TTableSchema) -> None:
     i_table.append(pa_table)
 
 
-def apply_write_disposition(
-    source, resources: Sequence[str], write_disposition: str
-) -> None:
-    """Apply write disposition to resources based on configuration."""
-    if write_disposition == "force_replace":
-        print("Forcing all resources to use 'replace' disposition")
-        for resource_name in resources:
-            resource = getattr(source, resource_name, None)
-            if resource and hasattr(resource, "write_disposition"):
-                original = getattr(resource, "write_disposition", "unknown")
-                resource.write_disposition = "replace"
-                print(f"  - {resource_name}: {original} → replace")
-    else:
-        # Use default dispositions from salesforce/__init__.py
-        print("Using default write dispositions:")
-        for resource_name in resources:
-            resource = getattr(source, resource_name, None)
-            if resource and hasattr(resource, "write_disposition"):
-                disposition = getattr(resource, "write_disposition", "unknown")
-                print(f"  - {resource_name}: {disposition}")
-
-
 def load() -> LoadInfo:
     """Execute a pipeline from Salesforce."""
     pipeline_name = "salesforce_duckdb" if DUMP_TO_DUCKDB else "salesforce_iceberg"
@@ -219,9 +196,14 @@ def load() -> LoadInfo:
     resources = [r.strip() for r in SALESFORCE_RESOURCES if r.strip()]
     print(f"Loading Salesforce resources: {', '.join(resources)}")
     source = salesforce_source().with_resources(*resources)
-    apply_write_disposition(source, resources, WRITE_DISPOSITION)
 
-    return pipeline.run(source)
+    # Apply write disposition based on configuration
+    if WRITE_DISPOSITION == "force_replace":
+        print("Forcing all resources to use 'replace' disposition")
+        return pipeline.run(source, write_disposition="replace")
+    else:
+        print("Using default write dispositions from resource definitions")
+        return pipeline.run(source)
 
 
 if __name__ == "__main__":
