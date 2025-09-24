@@ -25,13 +25,16 @@ The open-source version of dlt does not currently support Iceberg REST Catalog a
 - ✅ **Salesforce Integration**: Multiple authentication methods supported
 - ✅ **Schema Conversion**: Automatic dlt → Iceberg schema mapping with timezone-aware timestamps
 - ✅ **Table Auto-creation**: Creates Iceberg tables on-demand with proper schema
+- ✅ **Write Disposition Support**: Replace, merge (upsert), and append modes
+- ✅ **Parquet Format**: Efficient columnar format for Iceberg storage
 - ✅ **Batch Processing**: Configurable batch sizes for optimal performance
 - ✅ **Environment Variable Support**: Easy configuration via `.env` files
 - ✅ **Fallback to DuckDB**: Can switch between Iceberg and DuckDB for testing
+- ✅ **Orchestration**: Support for both Dagster and Airflow
 
 ## Architecture
 
-```
+```plain
 Salesforce API → dlt Source → Custom Iceberg Destination → Iceberg REST Catalog → MinIO/S3
 ```
 
@@ -125,6 +128,47 @@ export DUMP_TO_DUCKDB=true
 op run --env-file=./.env.local -- python salesforce_pipeline.py
 ```
 
+### Run with Dagster
+
+```bash
+# Prepare dependencies (required once)
+cd dagster
+just prepare
+
+# Start Dagster UI
+dagster dev
+
+# Access UI at http://localhost:3000
+# Materialize assets: salesforce/account, salesforce/contact, etc.
+```
+
+### Run with Airflow
+
+```bash
+# Prepare dependencies (required once)
+cd airflow
+just prepare
+
+# Copy DAG to your Airflow DAGs folder (if using external Airflow)
+cp -r dags/* $AIRFLOW_HOME/dags/
+
+# Set Airflow Variables (via UI or CLI)
+airflow variables set SOURCES__SALESFORCE__CREDENTIALS__USER_NAME "your_username"
+airflow variables set SOURCES__SALESFORCE__CREDENTIALS__PASSWORD "your_password"
+airflow variables set SOURCES__SALESFORCE__CREDENTIALS__SECURITY_TOKEN "your_token"
+airflow variables set ICEBERG_CATALOG_URL "http://lakekeeper:8181/catalog"
+airflow variables set ICEBERG_WAREHOUSE "demo1"
+airflow variables set ICEBERG_NAMESPACE "salesforce"
+airflow variables set ICEBERG_TOKEN "your_token"
+
+# Optional: Configure write disposition and resources
+airflow variables set WRITE_DISPOSITION "default"
+airflow variables set SALESFORCE_RESOURCES "account,contact,opportunity,opportunity_contact_role"
+
+# Trigger the DAG
+airflow dags trigger salesforce_iceberg_pipeline
+```
+
 ## Salesforce Sample Data
 
 To populate your Salesforce org with realistic test data for this demo, see [data/README.md](data/README.md). This includes Snowfakery recipes for generating:
@@ -135,14 +179,22 @@ To populate your Salesforce org with realistic test data for this demo, see [dat
 
 ## Project Structure
 
-```
+```plain
 ├── salesforce/                    # dlt-generated Salesforce source
-│   ├── __init__.py                # Source configuration
+│   ├── __init__.py                # Source configuration with resources
 │   └── helpers/
 │       ├── client.py              # Authentication classes
 │       └── records.py             # Data extraction logic
 ├── iceberg/
 │   └── schema.py                  # dlt → Iceberg schema conversion
+├── dagster/                       # Dagster orchestration
+│   └── dlt_salesforce/
+│       ├── definitions.py         # Dagster definitions
+│       └── assets.py              # Salesforce data assets
+├── airflow/                       # Airflow orchestration
+│   └── dags/
+│       ├── salesforce_iceberg_dag.py  # DAG definition with TaskFlow API
+│       └── dlt_salesforce/        # Shared pipeline code
 ├── salesforce_pipeline.py         # Main pipeline with custom destination
 ├── dump_env_vars.py               # Environment variable reference tool
 ├── check_tables.py                # Table inspection utility
@@ -156,12 +208,23 @@ To populate your Salesforce org with realistic test data for this demo, see [dat
 The core innovation is the `iceberg_rest_catalog` custom destination function:
 
 ```python
-@dlt.destination(batch_size=BATCH_SIZE)
+@dlt.destination(batch_size=BATCH_SIZE, loader_file_format="parquet")
 def iceberg_rest_catalog(items: TDataItems, table: TTableSchema) -> None:
     # Connect to REST catalog
+    # Handle write dispositions (replace, merge, append)
     # Convert schema if table doesn't exist
-    # Load data via PyArrow
+    # Load data via PyArrow with Parquet format
 ```
+
+### Write Dispositions
+
+The destination supports three write dispositions:
+
+- **`replace`**: Deletes all existing data before inserting new records
+- **`merge`**: Upserts based on primary keys (deletes matching records, then inserts)
+- **`append`**: Adds new records without deleting existing ones
+
+Merge operations use PyArrow for efficient primary key extraction and PyIceberg expressions for filtering.
 
 ### Schema Conversion
 
@@ -172,6 +235,32 @@ The project uses dlt's built-in `columns_to_arrow()` function for reliable schem
 pa_schema = columns_to_arrow(columns, caps)
 iceberg_schema = create_iceberg_schema_from_table_schema(table_schema)
 ```
+
+## Orchestration
+
+### Dagster
+
+The Dagster integration provides a declarative approach with asset-based orchestration:
+
+- **Multi-asset**: Core Salesforce resources as individual assets
+- **Asset dependencies**: Summary asset depends on core assets
+- **Configuration**: Via `SalesforceConfig` class
+- **Metadata**: Tracks rows loaded, write disposition, destination type
+
+**Setup**: Run `just prepare` in the `dagster/` directory to copy pipeline dependencies.
+
+### Airflow
+
+The Airflow DAG uses TaskFlow API with the following tasks:
+
+1. **validate_configuration**: Validates required Airflow Variables
+2. **run_salesforce_pipeline**: Executes the dlt pipeline
+3. **verify_data_load**: Verifies data was loaded to Iceberg tables
+4. **send_notification**: Sends execution summary
+
+**Configuration**: Uses Airflow Variables for credentials and settings
+
+**Setup**: Run `just prepare` in the `airflow/` directory to copy pipeline dependencies.
 
 ## Limitations & Considerations
 
@@ -189,6 +278,7 @@ This implementation is subject to PyIceberg's characteristics:
 - **Batch Processing**: Use appropriate batch sizes (1000-10000 records)
 - **Incremental Updates**: Use dlt's incremental loading for large tables
 - **Monitoring**: Monitor table metadata and file sizes
+- **Orchestration**: Use Airflow or Dagster for scheduling and monitoring
 
 ## Configuration Options
 
@@ -196,8 +286,10 @@ This implementation is subject to PyIceberg's characteristics:
 
 Control how data is loaded into tables using the `WRITE_DISPOSITION` environment variable:
 
-- **`default`** - Uses the default write disposition defined in `salesforce/__init__.py` for each resource
-- **`force_replace`** - Forces all resources to use 'replace' disposition, completely replacing table contents
+- **`default`** - Uses the write disposition defined in `salesforce/__init__.py` for each resource:
+    - `account`, `opportunity`, `opportunity_contact_role`: `merge` (upsert based on Id)
+    - `contact`: `replace` (full table replacement)
+- **`force_replace`** - Forces all resources to use `replace` disposition
 
 ```bash
 # Use default dispositions (recommended for incremental loading)
@@ -206,6 +298,8 @@ WRITE_DISPOSITION=default
 # Force all tables to be completely replaced
 WRITE_DISPOSITION=force_replace
 ```
+
+**Note**: `force_replace` mode automatically clears the dlt pipeline state to ensure clean table recreation.
 
 ### Salesforce Resources
 
