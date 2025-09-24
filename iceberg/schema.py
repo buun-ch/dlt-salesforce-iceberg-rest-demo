@@ -41,7 +41,6 @@ def create_iceberg_schema_from_table_schema(table_schema: TTableSchema) -> Schem
     for field in pa_schema:
         field_type: pa.DataType = field.type  # type: ignore
         field_name: str = str(field.name)
-        field_nullable: bool = bool(field.nullable)
 
         iceberg_type: IcebergType
         if pa.types.is_string(field_type) or pa.types.is_large_string(field_type):
@@ -70,7 +69,7 @@ def create_iceberg_schema_from_table_schema(table_schema: TTableSchema) -> Schem
             field_id=field_id,
             name=field_name,
             field_type=iceberg_type,
-            required=not field_nullable,
+            required=False,
         )
         iceberg_fields.append(iceberg_field)
         field_id += 1

@@ -36,30 +36,30 @@ def salesforce_source(
     def user_role() -> Iterable[TDataItem]:
         yield get_records(client, "UserRole")
 
-    @dlt.resource(write_disposition="merge")
+    @dlt.resource(write_disposition="merge", primary_key="Id")
     def opportunity(
         last_timestamp: incremental[str] = dlt.sources.incremental(
-            "SystemModstamp", initial_value=None
+            "SystemModstamp", initial_value="2000-01-01T00:00:00Z"
         )
     ) -> Iterable[TDataItem]:
         yield get_records(
             client, "Opportunity", last_timestamp.last_value, "SystemModstamp"
         )
 
-    @dlt.resource(write_disposition="merge")
+    @dlt.resource(write_disposition="merge", primary_key="Id")
     def opportunity_line_item(
         last_timestamp: incremental[str] = dlt.sources.incremental(
-            "SystemModstamp", initial_value=None
+            "SystemModstamp", initial_value="2000-01-01T00:00:00Z"
         )
     ) -> Iterable[TDataItem]:
         yield get_records(
             client, "OpportunityLineItem", last_timestamp.last_value, "SystemModstamp"
         )
 
-    @dlt.resource(write_disposition="merge")
+    @dlt.resource(write_disposition="merge", primary_key="Id")
     def opportunity_contact_role(
         last_timestamp: incremental[str] = dlt.sources.incremental(
-            "SystemModstamp", initial_value=None
+            "SystemModstamp", initial_value="2000-01-01T00:00:00Z"
         )
     ) -> Iterable[TDataItem]:
         yield get_records(
@@ -69,10 +69,10 @@ def salesforce_source(
             "SystemModstamp",
         )
 
-    @dlt.resource(write_disposition="merge")
+    @dlt.resource(write_disposition="merge", primary_key="Id")
     def account(
         last_timestamp: incremental[str] = dlt.sources.incremental(
-            "LastModifiedDate", initial_value=None
+            "LastModifiedDate", initial_value="2000-01-01T00:00:00Z"
         )
     ) -> Iterable[TDataItem]:
         yield get_records(
@@ -91,10 +91,10 @@ def salesforce_source(
     def campaign() -> Iterable[TDataItem]:
         yield get_records(client, "Campaign")
 
-    @dlt.resource(write_disposition="merge")
+    @dlt.resource(write_disposition="merge", primary_key="Id")
     def campaign_member(
         last_timestamp: incremental[str] = dlt.sources.incremental(
-            "SystemModstamp", initial_value=None
+            "SystemModstamp", initial_value="2000-01-01T00:00:00Z"
         )
     ) -> Iterable[TDataItem]:
         yield get_records(
