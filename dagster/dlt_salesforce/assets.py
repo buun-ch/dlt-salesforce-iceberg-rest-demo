@@ -9,7 +9,6 @@ import dlt
 
 from dagster import (
     AssetExecutionContext,
-    AssetIn,
     AssetKey,
     AssetOut,
     Config,
@@ -32,7 +31,6 @@ from salesforce_pipeline import (  # type: ignore[import]
     NAMESPACE,
     WAREHOUSE,
     WRITE_DISPOSITION,
-    apply_write_disposition,
     iceberg_rest_catalog,
 )
 
@@ -62,17 +60,13 @@ class SalesforceConfig(Config):
 def salesforce_core_assets(context: AssetExecutionContext, config: SalesforceConfig):
     """Load core Salesforce assets: account, contact, opportunity, and opportunity_contact_role."""
 
-    # Default resources to load
     resources_to_load = config.resources or [
         "account",
         "contact",
         "opportunity",
         "opportunity_contact_role",
     ]
-
     context.log.info(f"Loading Salesforce resources: {', '.join(resources_to_load)}")
-
-    # Set up environment variables for the pipeline
     env_vars = {
         "WRITE_DISPOSITION": config.write_disposition,
         "BATCH_SIZE": str(config.batch_size),
@@ -82,15 +76,12 @@ def salesforce_core_assets(context: AssetExecutionContext, config: SalesforceCon
         "DUMP_TO_DUCKDB": str(config.dump_to_duckdb).lower(),
         "SALESFORCE_RESOURCES": ",".join(resources_to_load),
     }
-
-    # Update environment for this run
     original_env = {}
     for key, value in env_vars.items():
         original_env[key] = os.environ.get(key)
         os.environ[key] = value
 
     try:
-        # Create pipeline
         pipeline_name = (
             "salesforce_duckdb" if config.dump_to_duckdb else "salesforce_iceberg"
         )
@@ -100,14 +91,12 @@ def salesforce_core_assets(context: AssetExecutionContext, config: SalesforceCon
             dataset_name="salesforce_data",
         )
 
-        # Get source with specified resources
         source = salesforce_source().with_resources(*resources_to_load)
-        apply_write_disposition(source, resources_to_load, config.write_disposition)
+        if config.write_disposition == "force_replace":
+            load_info = pipeline.run(source, write_disposition="replace")
+        else:
+            load_info = pipeline.run(source)
 
-        # Run the pipeline
-        load_info = pipeline.run(source)
-
-        # Process results
         results: Dict[str, MaterializeResult] = {}
         for resource_name in resources_to_load:
             if resource_name in [
@@ -116,7 +105,6 @@ def salesforce_core_assets(context: AssetExecutionContext, config: SalesforceCon
                 "opportunity",
                 "opportunity_contact_role",
             ]:
-                # Extract information from load packages
                 row_count = 0
                 for load_pkg in load_info.load_packages:
                     # Check completed jobs for this resource
@@ -145,12 +133,11 @@ def salesforce_core_assets(context: AssetExecutionContext, config: SalesforceCon
                         ),
                         "pipeline_name": MetadataValue.text(pipeline_name),
                         "load_ids": MetadataValue.text(", ".join(load_info.loads_ids)),
-                    }
+                    },
                 )
 
         context.log.info(f"Successfully loaded {len(results)} Salesforce resources")
 
-        # Return results in the order defined in outs
         expected_assets = [
             "account",
             "contact",
