@@ -7,6 +7,7 @@ from pyiceberg.types import (
     BooleanType,
     DateType,
     DoubleType,
+    IcebergType,
     LongType,
     NestedField,
     StringType,
@@ -17,9 +18,6 @@ from pyiceberg.types import (
 
 def create_iceberg_schema_from_table_schema(table_schema: TTableSchema) -> Schema:
     """Create Iceberg Schema from dlt TTableSchema using dlt's built-in PyArrow conversion."""
-
-    from pyiceberg.schema import Schema as IcebergSchema
-    from pyiceberg.types import IcebergType
 
     columns = table_schema.get("columns", {})
 
@@ -74,4 +72,4 @@ def create_iceberg_schema_from_table_schema(table_schema: TTableSchema) -> Schem
         iceberg_fields.append(iceberg_field)
         field_id += 1
 
-    return IcebergSchema(*iceberg_fields)
+    return Schema(*iceberg_fields)
