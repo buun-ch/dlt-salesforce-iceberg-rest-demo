@@ -1,4 +1,5 @@
 import pyarrow as pa
+from dlt.common.destination import DestinationCapabilitiesContext
 from dlt.common.libs.pyarrow import columns_to_arrow
 from dlt.common.schema import TTableSchema
 from pyiceberg.schema import Schema
@@ -20,17 +21,7 @@ def create_iceberg_schema_from_table_schema(table_schema: TTableSchema) -> Schem
     """Create Iceberg Schema from dlt TTableSchema using dlt's built-in PyArrow conversion."""
 
     columns = table_schema.get("columns", {})
-
-    try:
-        from dlt.common.destination import DestinationCapabilitiesContext
-
-        caps = DestinationCapabilitiesContext.generic_capabilities()
-    except ImportError:
-        # If import fails, create a minimal caps object
-        from dlt.common.destination.capabilities import DestinationCapabilitiesContext
-
-        caps = DestinationCapabilitiesContext.generic_capabilities()
-
+    caps = DestinationCapabilitiesContext.generic_capabilities()
     pa_schema = columns_to_arrow(columns, caps)
 
     iceberg_fields = []
