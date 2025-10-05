@@ -149,8 +149,8 @@ def salesforce_iceberg_pipeline():
             return {"status": "error", "message": f"Verification failed: {str(e)}"}
 
     @task
-    def send_notification(verification_result) -> None:  # type: ignore[no-untyped-def]
-        """Send notification about pipeline execution results."""
+    def print_result(verification_result) -> None:  # type: ignore[no-untyped-def]
+        """Print results."""
 
         if verification_result["status"] == "success":
             results = verification_result["verification_results"]
@@ -180,7 +180,7 @@ def salesforce_iceberg_pipeline():
     config = validate_configuration()
     pipeline_result = run_salesforce_pipeline(config)
     verification_result = verify_data_load(pipeline_result)
-    send_notification(verification_result)
+    print_result(verification_result)
 
 
 salesforce_dag = salesforce_iceberg_pipeline()
