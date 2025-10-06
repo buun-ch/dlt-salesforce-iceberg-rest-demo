@@ -6,20 +6,10 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import dlt
+import dagster as dg
 
-from dagster import (
-    AssetExecutionContext,
-    AssetKey,
-    AssetOut,
-    Config,
-    MaterializeResult,
-    MetadataValue,
-    asset,
-    multi_asset,
-)
-
-# Add dependencies directory to Python path (in project root)
-dependencies_dir = Path(__file__).parent.parent / "dependencies"
+# Add dependencies directory to Python path
+dependencies_dir = Path(__file__).parent.parent.parent.parent.parent / "dependencies"
 if str(dependencies_dir) not in sys.path:
     sys.path.insert(0, str(dependencies_dir))
 
@@ -35,7 +25,7 @@ from salesforce_pipeline import (  # type: ignore[import]
 )
 
 
-class SalesforceConfig(Config):
+class SalesforceConfig(dg.Config):
     """Configuration for Salesforce assets."""
 
     write_disposition: str = WRITE_DISPOSITION
@@ -47,17 +37,17 @@ class SalesforceConfig(Config):
     resources: Optional[List[str]] = None
 
 
-@multi_asset(
+@dg.multi_asset(
     outs={
-        "account": AssetOut(key_prefix=["salesforce"]),
-        "contact": AssetOut(key_prefix=["salesforce"]),
-        "opportunity": AssetOut(key_prefix=["salesforce"]),
-        "opportunity_contact_role": AssetOut(key_prefix=["salesforce"]),
+        "account": dg.AssetOut(key_prefix=["salesforce"]),
+        "contact": dg.AssetOut(key_prefix=["salesforce"]),
+        "opportunity": dg.AssetOut(key_prefix=["salesforce"]),
+        "opportunity_contact_role": dg.AssetOut(key_prefix=["salesforce"]),
     },
     compute_kind="dlt",
     group_name="salesforce_core",
 )
-def salesforce_core_assets(context: AssetExecutionContext, config: SalesforceConfig):
+def salesforce_core_assets(context: dg.AssetExecutionContext, config: SalesforceConfig):
     """Load core Salesforce assets: account, contact, opportunity, and opportunity_contact_role."""
 
     resources_to_load = config.resources or [
@@ -121,18 +111,18 @@ def salesforce_core_assets(context: AssetExecutionContext, config: SalesforceCon
                                 # We'll use file_size as a proxy or leave as 0
                                 row_count = 1  # Indicate successful load
 
-                results[resource_name] = MaterializeResult(
-                    asset_key=AssetKey(["salesforce", resource_name]),
+                results[resource_name] = dg.MaterializeResult(
+                    asset_key=dg.AssetKey(["salesforce", resource_name]),
                     metadata={
-                        "rows_loaded": MetadataValue.int(row_count),
-                        "write_disposition": MetadataValue.text(
+                        "rows_loaded": dg.MetadataValue.int(row_count),
+                        "write_disposition": dg.MetadataValue.text(
                             config.write_disposition
                         ),
-                        "destination": MetadataValue.text(
+                        "destination": dg.MetadataValue.text(
                             "duckdb" if config.dump_to_duckdb else "iceberg"
                         ),
-                        "pipeline_name": MetadataValue.text(pipeline_name),
-                        "load_ids": MetadataValue.text(", ".join(load_info.loads_ids)),
+                        "pipeline_name": dg.MetadataValue.text(pipeline_name),
+                        "load_ids": dg.MetadataValue.text(", ".join(load_info.loads_ids)),
                     },
                 )
 
@@ -155,20 +145,20 @@ def salesforce_core_assets(context: AssetExecutionContext, config: SalesforceCon
                 os.environ[key] = original_value
 
 
-@asset(
+@dg.asset(
     deps=[
-        AssetKey(["salesforce", "account"]),
-        AssetKey(["salesforce", "contact"]),
-        AssetKey(["salesforce", "opportunity"]),
-        AssetKey(["salesforce", "opportunity_contact_role"]),
+        dg.AssetKey(["salesforce", "account"]),
+        dg.AssetKey(["salesforce", "contact"]),
+        dg.AssetKey(["salesforce", "opportunity"]),
+        dg.AssetKey(["salesforce", "opportunity_contact_role"]),
     ],
     key_prefix=["salesforce"],
     compute_kind="summary",
     group_name="salesforce_core",
 )
 def salesforce_summary(
-    context: AssetExecutionContext,
-) -> MaterializeResult:
+    context: dg.AssetExecutionContext,
+) -> dg.MaterializeResult:
     """Summary of all loaded Salesforce core assets."""
 
     # Count total assets loaded
@@ -181,12 +171,12 @@ def salesforce_summary(
     context.log.info("- opportunity: Loaded")
     context.log.info("- opportunity_contact_role: Loaded")
 
-    return MaterializeResult(
+    return dg.MaterializeResult(
         metadata={
-            "total_assets": MetadataValue.int(total_assets),
-            "core_assets": MetadataValue.text(
+            "total_assets": dg.MetadataValue.int(total_assets),
+            "core_assets": dg.MetadataValue.text(
                 "account, contact, opportunity, opportunity_contact_role"
             ),
-            "pipeline_status": MetadataValue.text("completed"),
+            "pipeline_status": dg.MetadataValue.text("completed"),
         }
     )
